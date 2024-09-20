@@ -1,7 +1,7 @@
 <script>
 import { onMount } from 'svelte'
 import {
-    points,
+    pointsData,
     forest,
     plants,
     purchasePlant,
@@ -46,7 +46,7 @@ function handleRemove() {
 }
 
 function handlePurchase(plant) {
-    if ($points >= plant.cost && availableSlots > 0) {
+    if ($pointsData.total >= plant.cost && availableSlots > 0) {
         purchasePlant(plant)
     }
 }
@@ -69,6 +69,11 @@ onMount(() => {
 <svelte:window on:click={handleClickOutside} />
 
 <div class="forest-container">
+    <div class="points-display">
+        <div class="total-points">Total Points: {$pointsData.total}</div>
+        <div class="daily-points">Points Gained Today: {$pointsData.daily}</div>
+    </div>
+
     <div
         class="forest-grid"
         style="grid-template-columns: repeat({gridSize}, 1fr);">
@@ -97,7 +102,8 @@ onMount(() => {
             <button
                 class="shop-item"
                 on:click={() => handlePurchase(plant)}
-                disabled={$points < plant.cost || availableSlots === 0}>
+                disabled={$pointsData.total < plant.cost ||
+                    availableSlots === 0}>
                 <div
                     class="plant-icon {plant.name
                         .toLowerCase()
@@ -115,7 +121,7 @@ onMount(() => {
         style="top: {menuPosition.y}px; left: {menuPosition.x}px;">
         <button
             on:click={handleUpgrade}
-            disabled={$points <
+            disabled={$pointsData.total <
                 (selectedPlant.upgradeCost || selectedPlant.cost * 3)}>
             Upgrade (Cost: {selectedPlant.upgradeCost || selectedPlant.cost * 3}
             points)
@@ -133,6 +139,23 @@ onMount(() => {
     padding: 20px;
     background-color: #262626;
     color: #dadada;
+}
+
+.points-display {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #3a3a3a;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.total-points,
+.daily-points {
+    font-size: 1.1em;
+    color: #6ed86c;
 }
 
 .forest-grid {

@@ -1,4 +1,4 @@
-import { writable, get } from 'svelte/store'
+import { writable, get, derived } from 'svelte/store'
 import type { Plugin } from 'obsidian'
 import PomodoroSettings, { type Settings } from './Settings'
 
@@ -13,14 +13,40 @@ interface Plant {
 	upgradeCost?: number
 }
 
+interface PointsData {
+	total: number
+	daily: number
+	lastReset: string //ISO string
+}
+
 // Keep the existing settings store
 export const settings = PomodoroSettings.settings
 
 // Points store with initial value (you can change this later to load saved data)
-export const points = writable(100)
-// Increment points
+const initialPointsData: PointsData = {
+	total: 100,
+	daily: 0,
+	lastReset: new Date().toISOString().split('T')[0], // Get today's date in ISO format
+}
+
+export const pointsData = writable<PointsData>(initialPointsData)
+
+export const points = derived(pointsData, ($pointsData) => $pointsData.total)
+
 export function addPoints(value: number) {
-	points.update((n) => n + value)
+	pointsData.update((data) => {
+		const today = new Date().toISOString().split('T')[0]
+		if (data.lastReset !== today) {
+			// Reset daily points if it's a new day
+			data.daily = 0
+			data.lastReset = today
+		}
+		return {
+			...data,
+			total: data.total + value,
+			daily: data.daily + value,
+		}
+	})
 }
 
 // Available plants
@@ -41,52 +67,43 @@ export function setPlugin(plugin: Plugin) {
 
 // Save forest and points data
 async function saveProgress() {
-	if (pluginInstance === null) {
-		console.warn('pluginInstance is null, cannot save progress')
-	}
-	if (pluginInstance !== null) {
+	if (pluginInstance) {
 		const data = {
 			forest: get(forest),
-			points: get(points),
+			pointsData: get(pointsData),
 		}
-		console.log('Attempting to save data:', data)
-		try {
-			await pluginInstance.saveData(data)
-			console.log('Data saved successfully')
-		} catch (error) {
-			console.error('Error saving data:', error)
-		}
-	} else {
-		console.warn('Plugin instance is null, cannot save data')
+		await pluginInstance.saveData(data)
 	}
 }
 
 // Load saved progress
 export async function loadProgress() {
-	if (pluginInstance !== null) {
-		console.log('Loading saved data')
-		try {
-			const savedData = await pluginInstance.loadData()
-			console.log('Loaded data:', savedData)
-			if (savedData) {
-				forest.set(savedData.forest || [])
-				points.set(savedData.points || 1000)
+	if (pluginInstance) {
+		const savedData = await pluginInstance.loadData()
+		if (savedData) {
+			forest.set(savedData.forest || [])
+			if (savedData.pointsData) {
+				const today = new Date().toISOString().split('T')[0]
+				if (savedData.pointsData.lastReset !== today) {
+					// Reset daily points if it's a new day
+					savedData.pointsData.daily = 0
+					savedData.pointsData.lastReset = today
+				}
+				pointsData.set(savedData.pointsData)
+			} else {
+				pointsData.set(initialPointsData)
 			}
-		} catch (error) {
-			console.error('Error loading data:', error)
 		}
-	} else {
-		console.warn('Plugin instance is null, cannot load data')
 	}
 }
 
 // Function to purchase a plant
 export function purchasePlant(plant: Plant) {
-	points.update((currentPoints) => {
-		if (currentPoints >= plant.cost) {
+	pointsData.update((data) => {
+		if (data.total >= plant.cost) {
 			forest.update((currentForest) => {
-				const updatedForest = [...currentForest, plant]
-				console.log('Plant added:', plant) // Log the plant being added
+				const updatedForest = [...currentForest, { ...plant, level: 1 }]
+				console.log('Plant added:', plant)
 				return updatedForest
 			})
 			console.log('Attempting to save progress after purchasing a plant')
@@ -102,10 +119,13 @@ export function purchasePlant(plant: Plant) {
 					console.error('Error saving progress:', error)
 				})
 
-			return currentPoints - plant.cost
+			return {
+				...data,
+				total: data.total - plant.cost,
+			}
 		} else {
 			console.log('Not enough points to buy the plant')
-			return currentPoints
+			return data
 		}
 	})
 }
@@ -116,11 +136,11 @@ export function removePlant(plant: Plant) {
 	})
 }
 export function upgradePlant(plant: Plant) {
-	points.update((currentPoints) => {
+	pointsData.update((data) => {
 		// If upgradeCost doesn't exist yet, initialize it to 3x the plant's base cost
 		const currentUpgradeCost = plant.upgradeCost || plant.cost * 3
 
-		if (currentPoints >= currentUpgradeCost) {
+		if (data.total >= currentUpgradeCost) {
 			forest.update((currentForest) => {
 				const updatedForest = currentForest.map((p) => {
 					if (p.name === plant.name) {
@@ -142,10 +162,13 @@ export function upgradePlant(plant: Plant) {
 				})
 				return updatedForest
 			})
-			return currentPoints - currentUpgradeCost // Deduct points for the upgrade
+			return {
+				...data,
+				total: data.total - currentUpgradeCost,
+			}
 		} else {
 			console.log('Not enough points to upgrade the plant')
-			return currentPoints
+			return data
 		}
 	})
 }
