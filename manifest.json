@@ -1,11 +1,11 @@
 {
-	"id": "pomodoro-timer",
-	"name": "Pomodoro Timer",
-	"version": "1.2.3",
-	"minAppVersion": "0.15.0",
-	"description": "A pomodoro timer that helps manage your daily focus",
-	"author": "eatgrass",
-	"fundingUrl": "https://www.buymeacoffee.com/eatgrass",
-	"authorUrl": "https://github.com/eatgrass",
+	"id": "pomodoro-timer-forest",
+	"name": "Pomodoro Timer Forest",
+	"version": "1.0.0",
+	"minAppVersion": "0.0.0",
+	"description": "A gamified pomodoro timer that helps manage your daily focus and lets you build a cute forest",
+	"author": "kubakakauko",
+	"fundingUrl": "",
+	"authorUrl": "https://github.com/kubakakauko",
 	"isDesktopOnly": false
 }
