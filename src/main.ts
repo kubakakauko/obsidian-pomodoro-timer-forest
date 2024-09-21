@@ -5,7 +5,7 @@ import StatusBar from 'StatusBarComponent.svelte'
 import Timer from 'Timer'
 import Tasks from 'Tasks'
 import TaskTracker from 'TaskTracker'
-import { setPlugin, loadProgress } from './stores'
+import { setPlugin, loadProgress, resetStoresForDebug } from './stores'
 
 export default class PomodoroTimerPlugin extends Plugin {
 	private settingTab?: PomodoroSettings
@@ -42,6 +42,16 @@ export default class PomodoroTimerPlugin extends Plugin {
 		new StatusBar({ target: status, props: { store: this.timer } })
 
 		// commands
+
+		this.addCommand({
+			id: 'reset-pomodoro-forest-debug',
+			name: 'Reset Pomodoro Forest (Debug)',
+			callback: () => {
+				resetStoresForDebug()
+				new Notice('Pomodoro Forest has been reset for debugging')
+			},
+		})
+
 		this.addCommand({
 			id: 'toggle-timer',
 			name: 'Toggle timer',

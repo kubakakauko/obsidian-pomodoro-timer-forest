@@ -9,66 +9,71 @@ import {
     removePlant,
 } from '../stores'
 
-let gridSize = 4 // Start with a 4x4 grid
-let showMenu = false
-let selectedPlant = null
-let menuPosition = { x: 0, y: 0 }
+let gridSize = 4
+let selectedPlantId = null
+let hoveredPlantId = null
 
 $: availableSlots = gridSize * gridSize - $forest.length
+$: selectedPlant = $forest.find((p) => p.id === selectedPlantId)
+$: isResetState = $forest.length === 0 && $pointsData.total === 200
 
-function handlePlantClick(plant, event) {
-    selectedPlant = plant
-    showMenu = true
-    menuPosition = {
-        x: event.clientX,
-        y: event.clientY,
-    }
-    event.stopPropagation() // Prevent the click from being caught by the closeMenu listener
-}
-
-function closeMenu() {
-    showMenu = false
-    selectedPlant = null
+function handlePlantClick(plantId) {
+    console.log('Clicked plant ID:', plantId)
+    console.log(
+        'Clicked plant:',
+        $forest.find((p) => p.id === plantId),
+    )
+    selectedPlantId = selectedPlantId === plantId ? null : plantId
+    console.log('Plant selected:', selectedPlantId)
 }
 
 function handleUpgrade() {
-    if (selectedPlant) {
-        upgradePlant(selectedPlant)
-        closeMenu()
+    if (selectedPlantId) {
+        upgradePlant(selectedPlantId)
+        console.log('Plant upgraded:', selectedPlantId)
     }
 }
 
 function handleRemove() {
-    if (selectedPlant) {
-        removePlant(selectedPlant)
-        closeMenu()
+    if (selectedPlantId) {
+        removePlant(selectedPlantId)
+        selectedPlantId = null
+        console.log('Plant removed:', selectedPlantId)
     }
 }
 
 function handlePurchase(plant) {
     if ($pointsData.total >= plant.cost && availableSlots > 0) {
         purchasePlant(plant)
+        console.log('Plant purchased:', plant.name)
     }
 }
 
-// Close menu when clicking outside
-function handleClickOutside(event) {
-    if (showMenu && !event.target.closest('.popup-menu')) {
-        closeMenu()
-    }
+function handleHover(plantId) {
+    hoveredPlantId = plantId
+}
+
+function handleHoverEnd() {
+    hoveredPlantId = null
 }
 
 onMount(() => {
-    document.addEventListener('click', handleClickOutside)
-    return () => {
-        document.removeEventListener('click', handleClickOutside)
-    }
+    console.log('Forest component mounted')
+    console.log('Initial forest:', $forest)
 })
+
+$: {
+    console.log('Current forest:', $forest)
+    console.log('selectedPlantId changed:', selectedPlantId)
+    console.log('selectedPlant:', selectedPlant)
+}
 </script>
 
-<svelte:window on:click={handleClickOutside} />
-
 <div class="forest-container">
+    {#if isResetState}
+        <div class="reset-indicator">Forest Reset (Debug Mode)</div>
+    {/if}
+
     <div class="points-display">
         <div class="total-points">Total Points: {$pointsData.total}</div>
         <div class="daily-points">Points Gained Today: {$pointsData.daily}</div>
@@ -77,16 +82,20 @@ onMount(() => {
     <div
         class="forest-grid"
         style="grid-template-columns: repeat({gridSize}, 1fr);">
-        {#each $forest as plant, i}
+        {#each $forest as plant (plant.id)}
             <button
-                class="plant-cell"
-                on:click={(e) => handlePlantClick(plant, e)}>
+                class="plant-cell {selectedPlantId === plant.id
+                    ? 'selected'
+                    : ''} {hoveredPlantId === plant.id ? 'hovered' : ''}"
+                on:click={() => handlePlantClick(plant.id)}
+                on:mouseenter={() => handleHover(plant.id)}
+                on:mouseleave={handleHoverEnd}>
                 <div
                     class="plant-icon {plant.name
                         .toLowerCase()
                         .replace(' ', '-')}">
                 </div>
-                {#if plant.level}
+                {#if hoveredPlantId === plant.id || selectedPlantId === plant.id}
                     <span class="plant-level">Lvl {plant.level}</span>
                 {/if}
             </button>
@@ -96,40 +105,38 @@ onMount(() => {
         {/each}
     </div>
 
-    <div class="plant-shop">
-        <h3>Plant Shop</h3>
-        {#each plants as plant}
+    <div class="action-panel">
+        {#if selectedPlant}
             <button
-                class="shop-item"
-                on:click={() => handlePurchase(plant)}
-                disabled={$pointsData.total < plant.cost ||
-                    availableSlots === 0}>
-                <div
-                    class="plant-icon {plant.name
-                        .toLowerCase()
-                        .replace(' ', '-')}">
-                </div>
-                <span>{plant.name} - {plant.cost} points</span>
+                class="action-button upgrade"
+                on:click={handleUpgrade}
+                disabled={$pointsData.total <
+                    (selectedPlant.upgradeCost || selectedPlant.cost * 3)}>
+                <span class="icon">💧</span> Upgrade ({selectedPlant.upgradeCost ||
+                    selectedPlant.cost * 3} points)
             </button>
-        {/each}
+            <button class="action-button remove" on:click={handleRemove}>
+                <span class="icon">💀</span> Remove
+            </button>
+        {:else}
+            <h3>Plant Shop</h3>
+            {#each plants as plant}
+                <button
+                    class="shop-item"
+                    on:click={() => handlePurchase(plant)}
+                    disabled={$pointsData.total < plant.cost ||
+                        availableSlots === 0}>
+                    <div
+                        class="plant-icon {plant.name
+                            .toLowerCase()
+                            .replace(' ', '-')}">
+                    </div>
+                    <span>{plant.name} - {plant.cost} points</span>
+                </button>
+            {/each}
+        {/if}
     </div>
 </div>
-
-{#if showMenu && selectedPlant}
-    <div
-        class="popup-menu"
-        style="top: {menuPosition.y}px; left: {menuPosition.x}px;">
-        <button
-            on:click={handleUpgrade}
-            disabled={$pointsData.total <
-                (selectedPlant.upgradeCost || selectedPlant.cost * 3)}>
-            Upgrade (Cost: {selectedPlant.upgradeCost || selectedPlant.cost * 3}
-            points)
-        </button>
-        <button on:click={handleRemove}>Remove</button>
-        <button on:click={closeMenu}>Cancel</button>
-    </div>
-{/if}
 
 <style>
 .forest-container {
@@ -139,6 +146,16 @@ onMount(() => {
     padding: 20px;
     background-color: #262626;
     color: #dadada;
+    font-family: Arial, sans-serif;
+}
+
+.reset-indicator {
+    background-color: #ff9800;
+    color: #000;
+    padding: 5px 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    font-weight: bold;
 }
 
 .points-display {
@@ -168,6 +185,7 @@ onMount(() => {
 
 .plant-cell {
     aspect-ratio: 1;
+    width: 100%;
     background-color: #3a3a3a;
     border: 2px solid #6ed86c;
     border-radius: 8px;
@@ -177,7 +195,7 @@ onMount(() => {
     cursor: pointer;
     position: relative;
     overflow: hidden;
-    padding: 5px;
+    padding: 0;
 }
 
 .plant-cell.empty {
@@ -185,12 +203,80 @@ onMount(() => {
     cursor: default;
 }
 
+.plant-cell:hover,
+.plant-cell.selected,
+.plant-cell.hovered {
+    box-shadow: 0 0 10px rgba(110, 216, 108, 0.5);
+}
+
 .plant-icon {
-    width: 100%;
-    height: 100%;
+    width: 90%;
+    height: 90%;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
+}
+
+.plant-level {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #6ed86c;
+    padding: 2px 5px;
+    border-radius: 10px;
+    font-size: 0.8em;
+}
+
+.action-panel {
+    width: 100%;
+    max-width: 400px;
+}
+
+.action-button,
+.shop-item {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #3a3a3a;
+    border: none;
+    border-radius: 5px;
+    color: #dadada;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-size: 1em;
+    transition: background-color 0.3s;
+}
+
+.action-button:hover,
+.shop-item:hover {
+    background-color: #4a4a4a;
+}
+
+.action-button:disabled,
+.shop-item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.action-button .icon,
+.shop-item .plant-icon {
+    margin-right: 10px;
+    font-size: 1.2em;
+}
+
+.action-button.upgrade {
+    background-color: #4caf50;
+}
+
+.action-button.remove {
+    background-color: #f44336;
+}
+
+h3 {
+    margin-bottom: 10px;
+    color: #6ed86c;
 }
 
 .plant-icon.big-tree {
@@ -203,74 +289,5 @@ onMount(() => {
 
 .plant-icon.small-tree {
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g><path fill="%23394240" d="M32,0C18.148,0,12,23.188,12,32c0,9.656,6.883,17.734,16,19.594V60c0,2.211,1.789,4,4,4s4-1.789,4-4v-8.406C45.117,49.734,52,41.656,52,32C52,22.891,46.051,0,32,0z M32,44c-6.617,0-12-5.383-12-12c0-8.812,5.93-24,12-24c6.566,0,12,15.891,12,24C44,38.617,38.617,44,32,44z"/><path fill="%23B4CCB9" d="M32,44c-6.617,0-12-5.383-12-12c0-8.812,5.93-24,12-24c6.566,0,12,15.891,12,24C44,38.617,38.617,44,32,44z"/></g></svg>');
-}
-
-.plant-level {
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
-    background-color: rgba(0, 0, 0, 0.5);
-    padding: 2px 5px;
-    border-radius: 10px;
-    font-size: 0.8em;
-}
-
-.plant-shop {
-    width: 100%;
-    max-width: 400px;
-}
-
-.shop-item {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-    background-color: #3a3a3a;
-    border: none;
-    border-radius: 5px;
-    color: #dadada;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-}
-
-.shop-item .plant-icon {
-    width: 30px;
-    height: 30px;
-    margin-right: 10px;
-}
-
-.shop-item:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.popup-menu {
-    position: fixed;
-    background-color: #3a3a3a;
-    border: 1px solid #6ed86c;
-    border-radius: 5px;
-    padding: 10px;
-    z-index: 1000;
-}
-
-.popup-menu button {
-    display: block;
-    width: 100%;
-    padding: 5px 10px;
-    margin-bottom: 5px;
-    background-color: #6ed86c;
-    border: none;
-    border-radius: 3px;
-    color: #262626;
-    cursor: pointer;
-}
-
-.popup-menu button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.popup-menu button:last-child {
-    margin-bottom: 0;
 }
 </style>
