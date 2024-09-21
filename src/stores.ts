@@ -67,6 +67,33 @@ export function setPlugin(plugin: Plugin): void {
 	pluginInstance = plugin
 }
 
+export function handlePomodoroPoints(
+	isWorkSession: boolean,
+	duration: number,
+	completed: boolean,
+): void {
+	if (isWorkSession) {
+		// Add points for each minute of work (5 points per minute)
+		const minutesWorked = Math.floor(duration / 60)
+		const pointsForWork = minutesWorked * 5
+
+		// Add bonus points for completing the session
+		const completionBonus = completed ? 10 : 0
+
+		// Add points for task completion (if applicable)
+		// This should be called separately when a task is marked as complete
+
+		const totalPoints = pointsForWork + completionBonus
+		addPoints(totalPoints)
+
+		console.log(
+			`Added ${totalPoints} points (${pointsForWork} for work, ${completionBonus} bonus)`,
+		)
+	} else {
+		// Don't add points for break sessions
+		console.log('Break session completed, no points added')
+	}
+}
 export function addPoints(value: number): void {
 	pointsData.update((data) => {
 		const today = new Date().toISOString().split('T')[0]

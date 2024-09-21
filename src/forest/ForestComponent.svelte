@@ -9,6 +9,12 @@ import {
     removePlant,
 } from '../stores'
 
+const plantIcons = {
+    'big-tree': `<svg class="plant-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g><path fill="#394240" d="M55.643,46.344L35.641,2.342C34.992,0.92,33.57-0.001,32-0.001c-1.571,0-2.993,0.922-3.642,2.344l-20,44.001c-0.562,1.242-0.457,2.68,0.277,3.82C9.374,51.312,10.64,52,11.999,52h16v8c0,2.211,1.789,4,4.001,4c2.211,0,4-1.789,4-4v-8h16.002c1.359,0,2.625-0.688,3.359-1.836C56.096,49.023,56.205,47.586,55.643,46.344z M18.21,44L32,13.671L45.789,44H18.21z"/><polygon fill="#B4CCB9" points="18.21,44 32,13.671 45.789,44"/></g></svg>`,
+    flower: `<svg class="plant-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g><path fill="#E45D73" d="M50,18c0,10-8,18-18,18s-18-8-18-18S22,0,32,0S50,8,50,18z"/><path fill="#EC707F" d="M50,46c0,10-8,18-18,18s-18-8-18-18s8-18,18-18S50,36,50,46z"/><path fill="#E45D73" d="M18,14c10,0,18,8,18,18s-8,18-18,18S0,42,0,32S8,14,18,14z"/><path fill="#EC707F" d="M46,14c10,0,18,8,18,18s-8,18-18,18s-18-8-18-18S36,14,46,14z"/><path fill="#F3E39C" d="M41,32c0,5-4,9-9,9s-9-4-9-9s4-9,9-9S41,27,41,32z"/></g></svg>`,
+    'small-tree': `<svg class="plant-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g><path fill="#394240" d="M32,0C18.148,0,12,23.188,12,32c0,9.656,6.883,17.734,16,19.594V60c0,2.211,1.789,4,4,4s4-1.789,4-4v-8.406C45.117,49.734,52,41.656,52,32C52,22.891,46.051,0,32,0z M32,44c-6.617,0-12-5.383-12-12c0-8.812,5.93-24,12-24c6.566,0,12,15.891,12,24C44,38.617,38.617,44,32,44z"/><path fill="#B4CCB9" d="M32,44c-6.617,0-12-5.383-12-12c0-8.812,5.93-24,12-24c6.566,0,12,15.891,12,24C44,38.617,38.617,44,32,44z"/></g></svg>`,
+}
+
 let gridSize = 4
 let selectedPlantId = null
 let hoveredPlantId = null
@@ -79,9 +85,7 @@ $: {
         <div class="daily-points">Points Gained Today: {$pointsData.daily}</div>
     </div>
 
-    <div
-        class="forest-grid"
-        style="grid-template-columns: repeat({gridSize}, 1fr);">
+    <div class="forest-grid" style="--grid-size: {gridSize};">
         {#each $forest as plant (plant.id)}
             <button
                 class="plant-cell {selectedPlantId === plant.id
@@ -90,10 +94,10 @@ $: {
                 on:click={() => handlePlantClick(plant.id)}
                 on:mouseenter={() => handleHover(plant.id)}
                 on:mouseleave={handleHoverEnd}>
-                <div
-                    class="plant-icon {plant.name
-                        .toLowerCase()
-                        .replace(' ', '-')}">
+                <div class="plant-icon-container">
+                    {@html plantIcons[
+                        plant.name.toLowerCase().replace(' ', '-')
+                    ]}
                 </div>
                 {#if hoveredPlantId === plant.id || selectedPlantId === plant.id}
                     <span class="plant-level">Lvl {plant.level}</span>
@@ -181,21 +185,31 @@ $: {
     width: 100%;
     max-width: 400px;
     margin-bottom: 20px;
+    grid-template-columns: repeat(var(--grid-size), 1fr);
+    aspect-ratio: 1;
+}
+
+.forest-grid button {
+    padding: 0;
+    background: none;
+    border: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
 }
 
 .plant-cell {
-    aspect-ratio: 1;
+    position: relative;
     width: 100%;
+    height: 100%;
     background-color: #3a3a3a;
     border: 2px solid #6ed86c;
     border-radius: 8px;
+    cursor: pointer;
+    overflow: hidden;
     display: flex;
     justify-content: center;
     align-items: center;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    padding: 0;
 }
 
 .plant-cell.empty {
@@ -208,13 +222,23 @@ $: {
 .plant-cell.hovered {
     box-shadow: 0 0 10px rgba(110, 216, 108, 0.5);
 }
+:global(.plant-svg) {
+    width: 100%;
+    height: 100%;
+}
 
-.plant-icon {
-    width: 90%;
-    height: 90%;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
+.plant-icon-container {
+    width: 80%;
+    height: 80%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.plant-icon-container :global(svg) {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .plant-level {
@@ -226,8 +250,8 @@ $: {
     padding: 2px 5px;
     border-radius: 10px;
     font-size: 0.8em;
+    z-index: 1;
 }
-
 .action-panel {
     width: 100%;
     max-width: 400px;
@@ -274,20 +298,26 @@ $: {
     background-color: #f44336;
 }
 
+.shop-item .plant-icon-container {
+    width: 24px;
+    height: 24px;
+    margin-right: 10px;
+}
+
 h3 {
     margin-bottom: 10px;
     color: #6ed86c;
 }
 
-.plant-icon.big-tree {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g><path fill="%23394240" d="M55.643,46.344L35.641,2.342C34.992,0.92,33.57-0.001,32-0.001c-1.571,0-2.993,0.922-3.642,2.344l-20,44.001c-0.562,1.242-0.457,2.68,0.277,3.82C9.374,51.312,10.64,52,11.999,52h16v8c0,2.211,1.789,4,4.001,4c2.211,0,4-1.789,4-4v-8h16.002c1.359,0,2.625-0.688,3.359-1.836C56.096,49.023,56.205,47.586,55.643,46.344z M18.21,44L32,13.671L45.789,44H18.21z"/><polygon fill="%23B4CCB9" points="18.21,44 32,13.671 45.789,44"/></g></svg>');
-}
-
-.plant-icon.flower {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g><path fill="%23E45D73" d="M398.231,142.224c0,78.545-63.68,142.218-142.231,142.218c-78.545,0-142.221-63.673-142.221-142.218S177.455,0,256,0C334.551,0,398.231,63.68,398.231,142.224z"/><path fill="%23EC707F" d="M398.231,369.77C398.231,448.321,334.551,512,256,512c-78.545,0-142.221-63.679-142.221-142.23c0-78.539,63.676-142.212,142.221-142.212C334.551,227.558,398.231,291.231,398.231,369.77z"/><path fill="%23E45D73" d="M142.221,113.77c78.548,0,142.221,63.673,142.221,142.224c0,78.545-63.673,142.224-142.221,142.224C63.68,398.219,0,334.539,0,255.994C0,177.443,63.68,113.77,142.221,113.77z"/><path fill="%23EC707F" d="M369.769,113.77C448.32,113.77,512,177.443,512,255.994c0,78.545-63.68,142.224-142.231,142.224c-78.538,0-142.211-63.68-142.211-142.224C227.558,177.443,291.231,113.77,369.769,113.77z"/><path fill="%23F3E39C" d="M329.622,256.007c0,40.654-32.968,73.616-73.622,73.616c-40.66,0-73.622-32.962-73.622-73.616c0-40.66,32.962-73.628,73.622-73.628C296.654,182.378,329.622,215.346,329.622,256.007z"/></g></svg>');
-}
-
-.plant-icon.small-tree {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g><path fill="%23394240" d="M32,0C18.148,0,12,23.188,12,32c0,9.656,6.883,17.734,16,19.594V60c0,2.211,1.789,4,4,4s4-1.789,4-4v-8.406C45.117,49.734,52,41.656,52,32C52,22.891,46.051,0,32,0z M32,44c-6.617,0-12-5.383-12-12c0-8.812,5.93-24,12-24c6.566,0,12,15.891,12,24C44,38.617,38.617,44,32,44z"/><path fill="%23B4CCB9" d="M32,44c-6.617,0-12-5.383-12-12c0-8.812,5.93-24,12-24c6.566,0,12,15.891,12,24C44,38.617,38.617,44,32,44z"/></g></svg>');
-}
+/* .plant-icon.big-tree { */
+/*     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g><path fill="%23394240" d="M55.643,46.344L35.641,2.342C34.992,0.92,33.57-0.001,32-0.001c-1.571,0-2.993,0.922-3.642,2.344l-20,44.001c-0.562,1.242-0.457,2.68,0.277,3.82C9.374,51.312,10.64,52,11.999,52h16v8c0,2.211,1.789,4,4.001,4c2.211,0,4-1.789,4-4v-8h16.002c1.359,0,2.625-0.688,3.359-1.836C56.096,49.023,56.205,47.586,55.643,46.344z M18.21,44L32,13.671L45.789,44H18.21z"/><polygon fill="%23B4CCB9" points="18.21,44 32,13.671 45.789,44"/></g></svg>'); */
+/* } */
+/**/
+/* .plant-icon.flower { */
+/*     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g><path fill="%23E45D73" d="M398.231,142.224c0,78.545-63.68,142.218-142.231,142.218c-78.545,0-142.221-63.673-142.221-142.218S177.455,0,256,0C334.551,0,398.231,63.68,398.231,142.224z"/><path fill="%23EC707F" d="M398.231,369.77C398.231,448.321,334.551,512,256,512c-78.545,0-142.221-63.679-142.221-142.23c0-78.539,63.676-142.212,142.221-142.212C334.551,227.558,398.231,291.231,398.231,369.77z"/><path fill="%23E45D73" d="M142.221,113.77c78.548,0,142.221,63.673,142.221,142.224c0,78.545-63.673,142.224-142.221,142.224C63.68,398.219,0,334.539,0,255.994C0,177.443,63.68,113.77,142.221,113.77z"/><path fill="%23EC707F" d="M369.769,113.77C448.32,113.77,512,177.443,512,255.994c0,78.545-63.68,142.224-142.231,142.224c-78.538,0-142.211-63.68-142.211-142.224C227.558,177.443,291.231,113.77,369.769,113.77z"/><path fill="%23F3E39C" d="M329.622,256.007c0,40.654-32.968,73.616-73.622,73.616c-40.66,0-73.622-32.962-73.622-73.616c0-40.66,32.962-73.628,73.622-73.628C296.654,182.378,329.622,215.346,329.622,256.007z"/></g></svg>'); */
+/* } */
+/**/
+/* .plant-icon.small-tree { */
+/*     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g><path fill="%23394240" d="M32,0C18.148,0,12,23.188,12,32c0,9.656,6.883,17.734,16,19.594V60c0,2.211,1.789,4,4,4s4-1.789,4-4v-8.406C45.117,49.734,52,41.656,52,32C52,22.891,46.051,0,32,0z M32,44c-6.617,0-12-5.383-12-12c0-8.812,5.93-24,12-24c6.566,0,12,15.891,12,24C44,38.617,38.617,44,32,44z"/><path fill="%23B4CCB9" d="M32,44c-6.617,0-12-5.383-12-12c0-8.812,5.93-24,12-24c6.566,0,12,15.891,12,24C44,38.617,38.617,44,32,44z"/></g></svg>'); */
+/* } */
 </style>
